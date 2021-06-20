@@ -210,3 +210,9 @@ img {
 .Loader {
   margin: 0 auto;
 }
+
+.ErrorText {
+  font-size: 22px;
+  text-align: center;
+  color: #3f51b5;
+}

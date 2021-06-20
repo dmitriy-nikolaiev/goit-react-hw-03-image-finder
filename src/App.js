@@ -15,41 +15,52 @@ class App extends Component {
     page: 1,
     isLoading: false,
     openModal: false,
-    // fullImageURL:'',
+    error: '',
   };
 
   maxPages = 0;
   fullImageURL = '';
+  newElementHight = 0;
 
   componentDidUpdate(prevProps, prevState) {
-    if (prevState.searchQuery !== this.state.searchQuery || prevState.page !== this.state.page) {
+    if (
+      (prevState.searchQuery !== this.state.searchQuery && this.state.searchQuery !== '') ||
+      prevState.page !== this.state.page
+    ) {
       this.searchImagesHandler();
+      // this.scrollToHandler();
+    }
+    if (prevState.images.length !== this.state.images.length && prevState.images.length !== 0) {
+      // console.log('scrollToHandler App DidUpdate');
+      this.scrollToHandler();
     }
   }
 
-  toggleModal = () => {
-    this.setState(({ openModal }) => ({
-      openModal: !openModal,
-    }));
+  closeModal = () => {
+    this.fullImageURL = '';
+    this.setState({ openModal: false });
   };
 
   showImageHandler = (imageUrl) => () => {
-    console.log(imageUrl, 'imageUrl to modal');
     this.fullImageURL = imageUrl;
-    this.toggleModal();
-    // this.setState(({ fullImageURL }) => ({
-    //   fullImageURL: imageUrl,
-    // }));
+    this.setState({ openModal: true });
+  };
+
+  scrollToHandler = () => {
+    setTimeout(() => {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: 'smooth',
+      });
+    }, 750);
   };
 
   searchImagesHandler = async () => {
     const { searchQuery, page } = this.state;
-    this.setState({ isLoading: true });
-
+    this.setState({ isLoading: true, error: '' });
     try {
       const result = await fetchImages(searchQuery, page);
 
-      // console.log(result, 'result');
       if (result.total !== 0) {
         this.maxPages = Math.ceil(result.totalHits / 12);
 
@@ -57,15 +68,20 @@ class App extends Component {
           images: [...images, ...result.hits],
         }));
       } else {
-        console.log('Not found');
+        // console.log('Not found');
+        this.setState(() => ({
+          images: [],
+          error: 'No results were found for your search.',
+        }));
       }
-      // console.log(result, 'result');
-      // console.log(this.state, 'this.state');
     } catch (error) {
-      console.log(error, 'error');
-    }
+      console.error(error);
+      this.setState(() => ({ error: error.toString() }));
+    } finally {
+      this.setState({ isLoading: false });
 
-    this.setState({ isLoading: false });
+      // this.scrollToHandler();
+    }
   };
 
   loadMoreHandler = () => {
@@ -86,11 +102,24 @@ class App extends Component {
     return (
       <div className="App">
         <Searchbar onSubmit={this.onSubmitHandler} />
-        <ImageGallery images={this.state.images} showImageHandler={this.showImageHandler} />
+        {this.state.error ? (
+          <p className="ErrorText">{this.state.error}</p>
+        ) : (
+          <ImageGallery
+            images={this.state.images}
+            showImageHandler={this.showImageHandler}
+            scrollToHandler={this.scrollToHandler}
+          />
+        )}
+        {/* <ImageGallery
+          images={this.state.images}
+          showImageHandler={this.showImageHandler}
+          scrollToHandler={this.scrollToHandler}
+        /> */}
         {this.state.isLoading && <Loader />}
         {this.state.page < this.maxPages && <Button loadMoreHandler={this.loadMoreHandler} />}
         {this.state.openModal && (
-          <Modal fullImageURL={this.fullImageURL} onClose={this.toggleModal}></Modal>
+          <Modal fullImageURL={this.fullImageURL} onClose={this.closeModal}></Modal>
         )}
       </div>
     );
